@@ -592,8 +592,8 @@ class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
 
     EVALUATOR_NAME = "EvaluatorHoldout_for_LightFM"
 
-    def recommend_with_LightFM(LightFM_model, URM_train, user_id_array, remove_seen_flag= True, return_scores = False):    
-        n_users, n_items = URM_train.shape
+    def recommend_with_LightFM(self, LightFM_model, user_id_array, remove_seen_flag= True, return_scores = False):    
+        n_users, n_items = self.URM_train.shape
 
         # If is a scalar transform it in a 1-cell array
         if np.isscalar(user_id_array):
@@ -602,14 +602,14 @@ class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
         else:
             single_user = False
 
-        cutoff = URM_train.shape[1] - 1
+        cutoff = self.URM_train.shape[1] - 1
         scores_batch = np.empty(shape=(len(user_id_array), n_items))
 
         for i, user_id in enumerate(user_id_array):
             scores = LightFM_model.predict(user_id, np.arange(n_items))
 
             if remove_seen_flag:
-                already_seen_array = np.array(URM_train.tocsr()[user_id].indices)
+                already_seen_array = np.array(self.URM_train.tocsr()[user_id].indices)
                 scores[already_seen_array] = -np.inf
             
             scores_batch[i, :] = scores
@@ -688,7 +688,6 @@ class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
 
             # Compute predictions for a batch of users using vectorization, much more efficient than computing it one at a time
             recommended_items_batch_list, scores_batch = self.recommend_with_LightFM(recommender_object, 
-                                                                                     self.URM_train, 
                                                                                      test_user_batch_array, 
                                                                                      return_scores = True
                                                                                     )

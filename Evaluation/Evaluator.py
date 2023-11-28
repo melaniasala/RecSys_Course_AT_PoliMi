@@ -205,7 +205,8 @@ class Evaluator(object):
                  diversity_object = None,
                  ignore_items = None,
                  ignore_users = None,
-                 verbose=True):
+                 verbose=True,
+                 URM_train = None):
 
         super(Evaluator, self).__init__()
 
@@ -226,6 +227,7 @@ class Evaluator(object):
         self.exclude_seen = exclude_seen
         self.diversity_object = diversity_object
         self.n_users, self.n_items = URM_test.shape
+        self.URM_train = URM_train
 
         # Prune users with an insufficient number of ratings
         self.URM_test, users_to_evaluate_mask = _prune_users(URM_test, self.ignore_items_ID, min_ratings_per_user)
@@ -257,9 +259,10 @@ class Evaluator(object):
             print("{}: {}".format(self.EVALUATOR_NAME, string))
 
 
-    def evaluateRecommender(self, recommender_object):
+    def evaluateRecommender(self, recommender_object, has_method_get_URM_train= True):
         """
         :param recommender_object: the trained recommender object, a BaseRecommender subclass
+        :param has_method_get_URM_train: flag that indicates if the recommender_object has the method get_URM_train()
         :param URM_test_list: list of URMs to test the recommender against, or a single URM object
         :param cutoff_list: list of cutoffs to be use to report the scores, or a single cutoff
         :return results_df: dataframe with index the cutoff and columns the metric
@@ -273,6 +276,8 @@ class Evaluator(object):
         self._start_time_print = time.time()
         self._n_users_evaluated = 0
 
+        if has_method_get_URM_train:
+            self.URM_train = recommender_object.get_URM_train()
         results_dict = self._run_evaluation_on_selected_users(recommender_object, self.users_to_evaluate)
 
 
@@ -450,7 +455,7 @@ class EvaluatorHoldout(Evaluator):
 
         results_dict = _create_empty_metrics_dict(self.cutoff_list,
                                                   self.n_items, self.n_users,
-                                                  recommender_object.get_URM_train(),
+                                                  self.URM_train,
                                                   self.URM_test,
                                                   self.ignore_items_ID,
                                                   self.ignore_users_ID,

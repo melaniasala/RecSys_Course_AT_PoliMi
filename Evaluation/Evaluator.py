@@ -587,3 +587,117 @@ class EvaluatorNegativeItemSample(Evaluator):
 
         return results_dict
 
+class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
+    """EvaluatorHoldout"""
+
+    EVALUATOR_NAME = "EvaluatorHoldout_for_LightFM"
+
+    def recommend_with_LightFM(LightFM_model, URM_train, user_id_array, remove_seen_flag= True, return_scores = False):    
+        n_users, n_items = URM_train.shape
+
+        # If is a scalar transform it in a 1-cell array
+        if np.isscalar(user_id_array):
+            user_id_array = np.atleast_1d(user_id_array)
+            single_user = True
+        else:
+            single_user = False
+
+        cutoff = URM_train.shape[1] - 1
+        scores_batch = np.empty(shape=(len(user_id_array), n_items))
+
+        for i, user_id in enumerate(user_id_array):
+            scores = LightFM_model.predict(user_id, np.arange(n_items))
+
+            if remove_seen_flag:
+                already_seen_array = np.array(URM_train.tocsr()[user_id].indices)
+                scores[already_seen_array] = -np.inf
+            
+            scores_batch[i, :] = scores
+        
+        # Sorting is done in three steps. Faster then plain np.argsort for higher number of items
+        # - Partition the data to extract the set of relevant items
+        # - Sort only the relevant items
+        # - Get the original item index
+        # relevant_items_partition is block_size x cutoff
+        relevant_items_partition = np.argpartition(-scores_batch, cutoff-1, axis=1)[:,0:cutoff]
+
+        # Get original value and sort it
+        # [:, None] adds 1 dimension to the array, from (block_size,) to (block_size,1)
+        # This is done to correctly get scores_batch value as [row, relevant_items_partition[row,:]]
+        relevant_items_partition_original_value = scores_batch[np.arange(scores_batch.shape[0])[:, None], relevant_items_partition]
+        relevant_items_partition_sorting = np.argsort(-relevant_items_partition_original_value, axis=1)
+        ranking = relevant_items_partition[np.arange(relevant_items_partition.shape[0])[:, None], relevant_items_partition_sorting]
+
+        ranking_list = [None] * ranking.shape[0]
+
+        # Remove from the recommendation list any item that has a -inf score
+        # Since -inf is a flag to indicate an item to remove
+        for user_index in range(len(user_id_array)):
+            user_recommendation_list = ranking[user_index]
+            user_item_scores = scores_batch[user_index, user_recommendation_list]
+
+            not_inf_scores_mask = np.logical_not(np.isinf(user_item_scores))
+
+            user_recommendation_list = user_recommendation_list[not_inf_scores_mask]
+            ranking_list[user_index] = user_recommendation_list.tolist()
+
+        # Return single list for one user, instead of list of lists
+        if single_user:
+            ranking_list = ranking_list[0]
+
+        if return_scores:
+            return ranking_list, scores_batch
+
+        else:
+            return ranking_list
+
+    
+    
+
+
+    def _run_evaluation_on_selected_users(self, recommender_object, users_to_evaluate, block_size = None):
+
+        if block_size is None:
+            # Reduce block size if estimated memory requirement exceeds 4 GB
+            block_size = min([1000, int(4*1e9*8/64/self.n_items), len(users_to_evaluate)])
+
+
+        results_dict = _create_empty_metrics_dict(self.cutoff_list,
+                                                  self.n_items, self.n_users,
+                                                  self.URM_train,
+                                                  self.URM_test,
+                                                  self.ignore_items_ID,
+                                                  self.ignore_users_ID,
+                                                  self.diversity_object)
+
+
+        if self.ignore_items_flag:
+            recommender_object.set_items_to_ignore(self.ignore_items_ID)
+
+        # Start from -block_size to ensure it to be 0 at the first block
+        user_batch_start = 0
+        user_batch_end = 0
+
+        while user_batch_start < len(users_to_evaluate):
+
+            user_batch_end = user_batch_start + block_size
+            user_batch_end = min(user_batch_end, len(users_to_evaluate))
+
+            test_user_batch_array = np.array(users_to_evaluate[user_batch_start:user_batch_end])
+            user_batch_start = user_batch_end
+
+            # Compute predictions for a batch of users using vectorization, much more efficient than computing it one at a time
+            recommended_items_batch_list, scores_batch = recommender_object.recommend_with_LightFM()(recommender_object,
+                                                                                                     self.URM_train,
+                                                                                                     test_user_batch_array,
+                                                                                                     remove_seen_flag=self.exclude_seen,
+                                                                                                     return_scores = True
+                                                                                                     )
+
+            results_dict = self._compute_metrics_on_recommendation_list(test_user_batch_array = test_user_batch_array,
+                                                         recommended_items_batch_list = recommended_items_batch_list,
+                                                         scores_batch = scores_batch,
+                                                         results_dict = results_dict)
+
+
+        return results_dict

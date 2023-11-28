@@ -690,7 +690,7 @@ class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
             recommended_items_batch_list, scores_batch = self.recommend_with_LightFM(recommender_object, 
                                                                                      self.URM_train, 
                                                                                      test_user_batch_array, 
-                                                                                     remove_seen_flag= True, return_scores = True
+                                                                                     return_scores = True
                                                                                     )
 
             results_dict = self._compute_metrics_on_recommendation_list(test_user_batch_array = test_user_batch_array,

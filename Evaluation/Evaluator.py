@@ -606,7 +606,7 @@ class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
         scores_batch = np.empty(shape=(len(user_id_array), n_items))
 
         for i, user_id in enumerate(user_id_array):
-            scores = LightFM_model.predict(user_id, np.arange(n_items))
+            scores = LightFM_model.predict([user_id] * n_items, np.arange(n_items))
 
             if remove_seen_flag:
                 already_seen_array = np.array(self.URM_train.tocsr()[user_id].indices)

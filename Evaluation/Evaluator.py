@@ -433,14 +433,16 @@ class EvaluatorHoldout(Evaluator):
                  diversity_object = None,
                  ignore_items = None,
                  ignore_users = None,
-                 verbose=True):
+                 verbose=True,
+                 URM_train= None):
 
 
         super(EvaluatorHoldout, self).__init__(URM_test_list, cutoff_list,
                                                diversity_object = diversity_object,
                                                min_ratings_per_user =min_ratings_per_user, exclude_seen=exclude_seen,
                                                ignore_items = ignore_items, ignore_users = ignore_users,
-                                               verbose = verbose)
+                                               verbose = verbose,
+                                               URM_train= URM_train)
 
 
 
@@ -505,7 +507,8 @@ class EvaluatorNegativeItemSample(Evaluator):
     def __init__(self, URM_test_list, URM_test_negative, cutoff_list, min_ratings_per_user=1, exclude_seen=True,
                  diversity_object = None,
                  ignore_items = None,
-                 ignore_users = None):
+                 ignore_users = None,
+                 URM_train= None):
         """
 
         The EvaluatorNegativeItemSample computes the recommendations by sorting the test items as well as the test_negative items
@@ -523,7 +526,8 @@ class EvaluatorNegativeItemSample(Evaluator):
         super(EvaluatorNegativeItemSample, self).__init__(URM_test_list, cutoff_list,
                                                           diversity_object = diversity_object,
                                                           min_ratings_per_user = min_ratings_per_user, exclude_seen=exclude_seen,
-                                                          ignore_items = ignore_items, ignore_users = ignore_users)
+                                                          ignore_items = ignore_items, ignore_users = ignore_users,
+                                                          URM_train= URM_train)
 
 
         self.URM_items_to_rank = sps.csr_matrix(self.URM_test.copy().astype(np.bool)) + sps.csr_matrix(URM_test_negative.copy().astype(np.bool))

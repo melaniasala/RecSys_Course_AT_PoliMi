@@ -687,7 +687,7 @@ class EvaluatorHoldout_for_LightFM(EvaluatorHoldout):
             user_batch_start = user_batch_end
 
             # Compute predictions for a batch of users using vectorization, much more efficient than computing it one at a time
-            recommended_items_batch_list, scores_batch = recommend_with_LightFM()(recommender_object,
+            recommended_items_batch_list, scores_batch = self.recommend_with_LightFM(recommender_object,
                                                                                                      self.URM_train,
                                                                                                      test_user_batch_array,
                                                                                                      remove_seen_flag=self.exclude_seen,
